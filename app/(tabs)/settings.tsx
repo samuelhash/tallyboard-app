@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { signOut } from '../../lib/auth';
@@ -7,6 +8,7 @@ import { useAppStore } from '../../store/useAppStore';
 
 export default function SettingsScreen() {
   const { user } = useAppStore();
+  const router = useRouter();
   const [loading, setLoading] = React.useState(false);
 
   async function handleSignOut() {
@@ -37,6 +39,34 @@ export default function SettingsScreen() {
         >
           {user?.email ?? '—'}
         </Text>
+      </Card>
+
+      <Card className="mb-4">
+        <Text
+          className="text-text-secondary text-sm mb-3"
+          style={{ fontFamily: 'Inter_500Medium' }}
+        >
+          REPORTS
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/reports')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: 4,
+          }}
+        >
+          <View>
+            <Text style={{ color: '#FFFFFF', fontSize: 15, fontFamily: 'Inter_500Medium' }}>
+              PDF Reports
+            </Text>
+            <Text style={{ color: '#A3A3A3', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 }}>
+              Generate tax-ready P&amp;L reports
+            </Text>
+          </View>
+          <Text style={{ color: '#34D399', fontSize: 18 }}>→</Text>
+        </TouchableOpacity>
       </Card>
 
       <Card className="mb-8">

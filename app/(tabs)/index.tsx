@@ -5,7 +5,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import Svg, { Polyline, Circle, Line as SvgLine, Text as SvgText } from 'react-native-svg';
 import { useAppStore } from '../../store/useAppStore';
 import { useIncome } from '../../hooks/useIncome';
@@ -196,6 +198,7 @@ function PlatformPill({ platform, total }: { platform: string; total: number }) 
 
 export default function DashboardScreen() {
   const { income, expenses } = useAppStore();
+  const router = useRouter();
   const { fetchIncome } = useIncome();
   const { fetchExpenses } = useExpenses();
   const {
@@ -452,6 +455,34 @@ export default function DashboardScreen() {
           </ScrollView>
         </View>
       )}
+
+      {/* ── Export Report ── */}
+      <TouchableOpacity
+        onPress={() => router.push('/reports')}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          backgroundColor: '#1A1A1A',
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: '#262626',
+          paddingVertical: 14,
+          marginTop: 4,
+        }}
+      >
+        <Text style={{ fontSize: 16 }}>📄</Text>
+        <Text
+          style={{
+            color: '#34D399',
+            fontSize: 14,
+            fontFamily: 'Inter_600SemiBold',
+          }}
+        >
+          Export Report
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
