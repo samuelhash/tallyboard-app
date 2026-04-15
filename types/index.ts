@@ -46,3 +46,19 @@ export interface DashboardSummary {
   netProfit: number;
   period: 'month' | 'quarter' | 'year';
 }
+
+export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
+
+export interface InvoiceRecord {
+  id: string;
+  user_id: string;
+  brand_name: string;
+  amount: number;
+  currency: string;
+  status: InvoiceStatus;
+  issued_date: string; // YYYY-MM-DD
+  due_date: string | null;
+  paid_date: string | null;
+  notes: string | null;
+  created_at: string;
+}

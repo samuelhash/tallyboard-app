@@ -12,6 +12,7 @@ import Svg, { Polyline, Circle, Line as SvgLine, Text as SvgText } from 'react-n
 import { useAppStore } from '../../store/useAppStore';
 import { useIncome } from '../../hooks/useIncome';
 import { useExpenses } from '../../hooks/useExpenses';
+import { useInvoices } from '../../hooks/useInvoices';
 import { useDashboard } from '../../hooks/useDashboard';
 import { formatCurrency } from '../../lib/formatters';
 
@@ -197,10 +198,11 @@ function PlatformPill({ platform, total }: { platform: string; total: number }) 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
-  const { income, expenses } = useAppStore();
+  const { income, expenses, invoices } = useAppStore();
   const router = useRouter();
   const { fetchIncome } = useIncome();
   const { fetchExpenses } = useExpenses();
+  const { fetchInvoices } = useInvoices();
   const {
     loading,
     isEmpty,
@@ -217,7 +219,13 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (income.length === 0) fetchIncome();
     if (expenses.length === 0) fetchExpenses();
+    if (invoices.length === 0) fetchInvoices();
   }, []);
+
+  const outstandingInvoiceTotal = invoices
+    .filter((i) => i.status === 'pending' || i.status === 'overdue')
+    .reduce((s, i) => s + i.amount, 0);
+  const overdueInvoiceCount = invoices.filter((i) => i.status === 'overdue').length;
 
   const screenWidth = Dimensions.get('window').width;
   const chartWidth = Math.min(screenWidth - 48, 600);
@@ -351,6 +359,39 @@ export default function DashboardScreen() {
           </Text>
         </View>
       </View>
+
+      {/* ── Outstanding Invoices Card ── */}
+      {invoices.length > 0 && (
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/invoices')}
+          style={{
+            backgroundColor: '#1A1A1A',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: overdueInvoiceCount > 0 ? 'rgba(239,68,68,0.3)' : '#262626',
+            padding: 20,
+            marginBottom: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <View>
+            <Text style={{ color: '#A3A3A3', fontSize: 11, fontFamily: 'Inter_500Medium', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              Outstanding Invoices
+            </Text>
+            <Text style={{ color: '#FBBF24', fontSize: 22, fontFamily: 'Inter_700Bold' }}>
+              {formatCurrency(outstandingInvoiceTotal)}
+            </Text>
+            {overdueInvoiceCount > 0 && (
+              <Text style={{ color: '#EF4444', fontSize: 12, fontFamily: 'Inter_600SemiBold', marginTop: 4 }}>
+                {overdueInvoiceCount} overdue
+              </Text>
+            )}
+          </View>
+          <Text style={{ color: '#A3A3A3', fontSize: 20 }}>→</Text>
+        </TouchableOpacity>
+      )}
 
       {/* ── Net Profit Hero ── */}
       <View

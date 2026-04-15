@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
-import type { IncomeRecord, ExpenseRecord } from '../types';
+import type { IncomeRecord, ExpenseRecord, InvoiceRecord } from '../types';
 
 interface AppState {
   session: Session | null;
@@ -10,6 +10,8 @@ interface AppState {
   incomeLoading: boolean;
   expenses: ExpenseRecord[];
   expensesLoading: boolean;
+  invoices: InvoiceRecord[];
+  invoicesLoading: boolean;
   setSession: (session: Session | null) => void;
   setLoading: (loading: boolean) => void;
   setIncome: (income: IncomeRecord[]) => void;
@@ -22,6 +24,11 @@ interface AppState {
   addExpenseRecord: (record: ExpenseRecord) => void;
   removeExpenseRecord: (id: string) => void;
   updateExpenseRecord: (id: string, updates: Partial<ExpenseRecord>) => void;
+  setInvoices: (invoices: InvoiceRecord[]) => void;
+  setInvoicesLoading: (loading: boolean) => void;
+  addInvoiceRecord: (record: InvoiceRecord) => void;
+  removeInvoiceRecord: (id: string) => void;
+  updateInvoiceRecord: (id: string, updates: Partial<InvoiceRecord>) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -32,6 +39,8 @@ export const useAppStore = create<AppState>((set) => ({
   incomeLoading: false,
   expenses: [],
   expensesLoading: false,
+  invoices: [],
+  invoicesLoading: false,
   setSession: (session) =>
     set({ session, user: session?.user ?? null }),
   setLoading: (isLoading) => set({ isLoading }),
@@ -66,5 +75,21 @@ export const useAppStore = create<AppState>((set) => ({
       expenses: state.expenses
         .map((r) => (r.id === id ? { ...r, ...updates } : r))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    })),
+  setInvoices: (invoices) => set({ invoices }),
+  setInvoicesLoading: (invoicesLoading) => set({ invoicesLoading }),
+  addInvoiceRecord: (record) =>
+    set((state) => ({
+      invoices: [record, ...state.invoices].sort(
+        (a, b) => new Date(b.issued_date).getTime() - new Date(a.issued_date).getTime()
+      ),
+    })),
+  removeInvoiceRecord: (id) =>
+    set((state) => ({ invoices: state.invoices.filter((r) => r.id !== id) })),
+  updateInvoiceRecord: (id, updates) =>
+    set((state) => ({
+      invoices: state.invoices
+        .map((r) => (r.id === id ? { ...r, ...updates } : r))
+        .sort((a, b) => new Date(b.issued_date).getTime() - new Date(a.issued_date).getTime()),
     })),
 }));

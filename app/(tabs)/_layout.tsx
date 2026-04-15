@@ -65,11 +65,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="invoices"
+        options={{
+          title: 'Invoices',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 18 }}>{focused ? '📋' : '📄'}</Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 18 }}>{focused ? '⚙' : '⚙'}</Text>
+            <Text style={{ fontSize: 18 }}>⚙</Text>
           ),
         }}
       />

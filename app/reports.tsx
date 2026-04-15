@@ -15,7 +15,7 @@ import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/useAppStore';
 import { generateReportHTML } from '../lib/pdf-generator';
 import { formatCurrency } from '../lib/formatters';
-import type { IncomeRecord, ExpenseRecord } from '../types';
+import type { IncomeRecord, ExpenseRecord, InvoiceRecord } from '../types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -158,6 +158,8 @@ export default function ReportsScreen() {
     net: number;
     incomeCount: number;
     expenseCount: number;
+    invoicePaidTotal: number;
+    invoiceOutstandingCount: number;
   } | null>(null);
 
   const dateRange = getPresetRange(preset);
@@ -167,7 +169,7 @@ export default function ReportsScreen() {
     if (!user) return;
     setPreviewing(true);
     try {
-      const [incomeRes, expenseRes] = await Promise.all([
+      const [incomeRes, expenseRes, invoiceRes] = await Promise.all([
         supabase
           .from('income')
           .select('amount')
@@ -180,9 +182,21 @@ export default function ReportsScreen() {
           .eq('user_id', user.id)
           .gte('date', dateRange.start)
           .lte('date', dateRange.end),
+        supabase
+          .from('invoices')
+          .select('amount, status, paid_date, issued_date')
+          .eq('user_id', user.id),
       ]);
 
-      const revenue = (incomeRes.data ?? []).reduce((s: number, r: { amount: number }) => s + r.amount, 0);
+      const incomeRevenue = (incomeRes.data ?? []).reduce((s: number, r: { amount: number }) => s + r.amount, 0);
+      const invoiceData = (invoiceRes.data ?? []) as Pick<InvoiceRecord, 'amount' | 'status' | 'paid_date' | 'issued_date'>[];
+      const invoicePaidTotal = invoiceData
+        .filter((i) => i.status === 'paid' && i.paid_date && i.paid_date >= dateRange.start && i.paid_date <= dateRange.end)
+        .reduce((s, i) => s + i.amount, 0);
+      const invoiceOutstandingCount = invoiceData
+        .filter((i) => (i.status === 'pending' || i.status === 'overdue') && i.issued_date >= dateRange.start && i.issued_date <= dateRange.end)
+        .length;
+      const revenue = incomeRevenue + invoicePaidTotal;
       const expenses = (expenseRes.data ?? []).reduce((s: number, r: { amount: number }) => s + r.amount, 0);
       setPreviewData({
         revenue,
@@ -190,6 +204,8 @@ export default function ReportsScreen() {
         net: revenue - expenses,
         incomeCount: (incomeRes.data ?? []).length,
         expenseCount: (expenseRes.data ?? []).length,
+        invoicePaidTotal,
+        invoiceOutstandingCount,
       });
     } finally {
       setPreviewing(false);
@@ -207,7 +223,7 @@ export default function ReportsScreen() {
 
     try {
       // Full data fetch
-      const [incomeRes, expenseRes] = await Promise.all([
+      const [incomeRes, expenseRes, invoiceRes] = await Promise.all([
         supabase
           .from('income')
           .select('*')
@@ -222,6 +238,11 @@ export default function ReportsScreen() {
           .gte('date', dateRange.start)
           .lte('date', dateRange.end)
           .order('date', { ascending: false }),
+        supabase
+          .from('invoices')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('issued_date', { ascending: false }),
       ]);
 
       if (incomeRes.error) throw incomeRes.error;
@@ -234,6 +255,7 @@ export default function ReportsScreen() {
         displayName: user.user_metadata?.full_name ?? user.email ?? '',
         incomeRecords: (incomeRes.data ?? []) as IncomeRecord[],
         expenseRecords: (expenseRes.data ?? []) as ExpenseRecord[],
+        invoiceRecords: (invoiceRes.data ?? []) as InvoiceRecord[],
       });
 
       if (Platform.OS === 'web') {
@@ -466,6 +488,20 @@ export default function ReportsScreen() {
               label="Expense Records"
               value={String(previewData.expenseCount)}
             />
+            {previewData.invoicePaidTotal > 0 && (
+              <SummaryRow
+                label="Paid Invoices (Brand Deals)"
+                value={formatCurrency(previewData.invoicePaidTotal)}
+                color="#34D399"
+              />
+            )}
+            {previewData.invoiceOutstandingCount > 0 && (
+              <SummaryRow
+                label="Outstanding Invoices"
+                value={String(previewData.invoiceOutstandingCount)}
+                color="#FBBF24"
+              />
+            )}
           </>
         ) : (
           <Text style={{ color: '#666', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', paddingVertical: 16 }}>

@@ -1,4 +1,4 @@
-import type { IncomeRecord, ExpenseRecord } from '../types';
+import type { IncomeRecord, ExpenseRecord, InvoiceRecord } from '../types';
 
 export interface ReportData {
   dateRange: { start: string; end: string };
@@ -7,6 +7,7 @@ export interface ReportData {
   displayName?: string;
   incomeRecords: IncomeRecord[];
   expenseRecords: ExpenseRecord[];
+  invoiceRecords?: InvoiceRecord[];
 }
 
 function fmt(amount: number): string {
@@ -37,9 +38,19 @@ function groupBy<T>(arr: T[], key: (item: T) => string): Map<string, T[]> {
 }
 
 export function generateReportHTML(data: ReportData): string {
-  const { dateRange, reportType, userEmail, displayName, incomeRecords, expenseRecords } = data;
+  const { dateRange, reportType, userEmail, displayName, incomeRecords, expenseRecords, invoiceRecords = [] } = data;
 
-  const totalRevenue = incomeRecords.reduce((s, r) => s + r.amount, 0);
+  // Only paid invoices with paid_date in range count toward revenue
+  const paidInvoicesInRange = invoiceRecords.filter(
+    (i) => i.status === 'paid' && i.paid_date && i.paid_date >= dateRange.start && i.paid_date <= dateRange.end
+  );
+  const outstandingInvoices = invoiceRecords.filter(
+    (i) => (i.status === 'pending' || i.status === 'overdue') &&
+      i.issued_date >= dateRange.start && i.issued_date <= dateRange.end
+  );
+
+  const totalRevenue = incomeRecords.reduce((s, r) => s + r.amount, 0) +
+    paidInvoicesInRange.reduce((s, i) => s + i.amount, 0);
   const totalExpenses = expenseRecords.reduce((s, r) => s + r.amount, 0);
   const netProfit = totalRevenue - totalExpenses;
 
@@ -99,6 +110,31 @@ export function generateReportHTML(data: ReportData): string {
         <td>${esc(r.category)}</td>
         <td>${esc(r.description ?? '—')}</td>
         <td class="num amount red">${fmt(r.amount)}</td>
+      </tr>`)
+    .join('');
+
+  // Outstanding invoice rows
+  const outstandingInvoiceRows = [...outstandingInvoices]
+    .sort((a, b) => a.issued_date.localeCompare(b.issued_date))
+    .map((i) => `
+      <tr>
+        <td>${esc(i.brand_name)}</td>
+        <td>${fmtDate(i.issued_date)}</td>
+        <td>${i.due_date ? fmtDate(i.due_date) : '—'}</td>
+        <td style="text-transform:capitalize">${esc(i.status)}</td>
+        <td class="num amount">${fmt(i.amount)}</td>
+      </tr>`)
+    .join('');
+
+  // Paid invoice rows
+  const paidInvoiceRows = [...paidInvoicesInRange]
+    .sort((a, b) => (a.paid_date ?? '').localeCompare(b.paid_date ?? ''))
+    .map((i) => `
+      <tr>
+        <td>${esc(i.brand_name)}</td>
+        <td>${fmtDate(i.issued_date)}</td>
+        <td>${i.paid_date ? fmtDate(i.paid_date) : '—'}</td>
+        <td class="num amount mint">${fmt(i.amount)}</td>
       </tr>`)
     .join('');
 
@@ -362,6 +398,43 @@ ${showExpense && expenseRecords.length > 0 ? `
 ${showIncome && incomeRecords.length === 0 && showExpense && expenseRecords.length === 0 ? `
 <div style="text-align:center; padding: 40px; color: #9ca3af; font-size: 14px;">
   No records found for the selected period.
+</div>` : ''}
+
+${outstandingInvoices.length > 0 ? `
+<div class="section">
+  <div class="section-title">Outstanding Invoices (${outstandingInvoices.length})</div>
+  <table>
+    <thead><tr>
+      <th>Brand</th>
+      <th>Issued</th>
+      <th>Due</th>
+      <th>Status</th>
+      <th class="num">Amount</th>
+    </tr></thead>
+    <tbody>${outstandingInvoiceRows}</tbody>
+    <tfoot><tr style="background:#f9fafb">
+      <td colspan="4" style="font-weight:700;font-size:12px;">Total Outstanding</td>
+      <td class="num amount">${fmt(outstandingInvoices.reduce((s, i) => s + i.amount, 0))}</td>
+    </tr></tfoot>
+  </table>
+</div>` : ''}
+
+${paidInvoicesInRange.length > 0 ? `
+<div class="section">
+  <div class="section-title">Paid Invoices — Brand Deals (${paidInvoicesInRange.length})</div>
+  <table>
+    <thead><tr>
+      <th>Brand</th>
+      <th>Issued</th>
+      <th>Paid</th>
+      <th class="num">Amount</th>
+    </tr></thead>
+    <tbody>${paidInvoiceRows}</tbody>
+    <tfoot><tr style="background:#f9fafb">
+      <td colspan="3" style="font-weight:700;font-size:12px;">Total Paid</td>
+      <td class="num amount mint">${fmt(paidInvoicesInRange.reduce((s, i) => s + i.amount, 0))}</td>
+    </tr></tfoot>
+  </table>
 </div>` : ''}
 
 <div class="footer">
