@@ -217,6 +217,7 @@ export default function DashboardScreen() {
   } = useDashboard();
 
   useEffect(() => {
+    console.log('[Dashboard] mounted');
     if (income.length === 0) fetchIncome();
     if (expenses.length === 0) fetchExpenses();
     if (invoices.length === 0) fetchInvoices();

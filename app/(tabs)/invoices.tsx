@@ -162,6 +162,7 @@ export default function InvoicesScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    console.log('[Invoices] mounted');
     if (invoices.length === 0) fetchInvoices();
   }, []);
 

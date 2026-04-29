@@ -167,6 +167,7 @@ export default function ExpensesScreen() {
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
+    console.log('[Expenses] mounted');
     fetchExpenses();
   }, []);
 

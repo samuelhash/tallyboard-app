@@ -69,7 +69,7 @@ export default function TabsLayout() {
         options={{
           title: 'Invoices',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 18 }}>{focused ? '📋' : '📄'}</Text>
+            <Text style={{ fontSize: 18 }}>{focused ? '☰' : '☰'}</Text>
           ),
         }}
       />

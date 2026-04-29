@@ -6,6 +6,7 @@ interface AppState {
   session: Session | null;
   user: User | null;
   isLoading: boolean;
+  onboarded: boolean;
   income: IncomeRecord[];
   incomeLoading: boolean;
   expenses: ExpenseRecord[];
@@ -14,6 +15,7 @@ interface AppState {
   invoicesLoading: boolean;
   setSession: (session: Session | null) => void;
   setLoading: (loading: boolean) => void;
+  setOnboarded: (val: boolean) => void;
   setIncome: (income: IncomeRecord[]) => void;
   setIncomeLoading: (loading: boolean) => void;
   addIncomeRecord: (record: IncomeRecord) => void;
@@ -35,6 +37,7 @@ export const useAppStore = create<AppState>((set) => ({
   session: null,
   user: null,
   isLoading: true,
+  onboarded: false,
   income: [],
   incomeLoading: false,
   expenses: [],
@@ -44,6 +47,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSession: (session) =>
     set({ session, user: session?.user ?? null }),
   setLoading: (isLoading) => set({ isLoading }),
+  setOnboarded: (onboarded) => set({ onboarded }),
   setIncome: (income) => set({ income }),
   setIncomeLoading: (incomeLoading) => set({ incomeLoading }),
   addIncomeRecord: (record) =>

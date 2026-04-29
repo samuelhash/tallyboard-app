@@ -1,6 +1,6 @@
 import '../global.css';
-import React, { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Stack, useRouter } from 'expo-router';
 import {
   useFonts,
   Inter_400Regular,
@@ -9,6 +9,7 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import { Platform, View, ActivityIndicator } from 'react-native';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/useAppStore';
 
@@ -23,7 +24,6 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     '<rect x="22" y="6" width="6" height="22" rx="1" fill="#34D399"/>' +
     '</svg>'
   );
-  // Remove any existing favicon links first
   document.querySelectorAll('link[rel*="icon"]').forEach((el) => el.remove());
   const link = document.createElement('link');
   link.rel = 'icon';
@@ -32,36 +32,22 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.head.appendChild(link);
 }
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { session, isLoading } = useAppStore();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inAuthGroup = segments[0] === '(auth)';
-
-    if (!session && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (session && inAuthGroup) {
-      router.replace('/(tabs)');
-    }
-  }, [session, segments, isLoading]);
-
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator color="#34D399" size="large" />
-      </View>
-    );
+async function fetchOnboardedStatus(userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('onboarded')
+      .eq('id', userId)
+      .single();
+    // null means old user created before the column existed — treat as onboarded
+    return data?.onboarded ?? true;
+  } catch {
+    return true; // don't trap existing users on error
   }
-
-  return <>{children}</>;
 }
 
 export default function RootLayout() {
-  const { setSession, setLoading } = useAppStore();
+  const { setSession } = useAppStore();
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
@@ -71,32 +57,62 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
+  const [authReady, setAuthReady] = useState(false);
+  const [session, setLocalSession] = useState<Session | null>(null);
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+
   useEffect(() => {
-    // Get initial session and route accordingly
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
+    let mounted = true;
+
+    // Check initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      let ob: boolean | null = null;
       if (session) {
-        router.replace('/(tabs)');
+        ob = await fetchOnboardedStatus(session.user.id);
+        if (!mounted) return;
       }
+      setSession(session); // keep store in sync for other screens
+      setLocalSession(session);
+      setOnboarded(ob);
+      setAuthReady(true);
     });
 
-    // Listen for auth changes and drive navigation directly
+    // Listen for auth changes after initial load
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        if (event === 'SIGNED_IN') {
-          router.replace('/(tabs)');
-        } else if (event === 'SIGNED_OUT') {
-          router.replace('/(auth)/login');
+      async (event, session) => {
+        console.log('AUTH STATE CHANGED', event, session);
+        if (!mounted || event === 'INITIAL_SESSION') return;
+        let ob: boolean | null = null;
+        if (session) {
+          ob = await fetchOnboardedStatus(session.user.id);
+          if (!mounted) return;
         }
+        setSession(session);
+        setLocalSession(session);
+        setOnboarded(ob);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  if (!fontsLoaded) {
+  // Single navigation effect — fires when auth state is determined or changes
+  useEffect(() => {
+    if (!authReady || !fontsLoaded) return;
+    if (!session) {
+      router.replace('/(auth)/login');
+    } else if (onboarded === false) {
+      router.replace('/onboarding');
+    } else {
+      router.replace('/(tabs)');
+    }
+  }, [authReady, fontsLoaded, session, onboarded]);
+
+  if (!fontsLoaded || !authReady) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
         <ActivityIndicator color="#34D399" size="large" />
@@ -105,13 +121,12 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthGuard>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="import" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="reports" options={{ presentation: 'modal' }} />
-      </Stack>
-    </AuthGuard>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="import" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="reports" options={{ presentation: 'modal' }} />
+    </Stack>
   );
 }

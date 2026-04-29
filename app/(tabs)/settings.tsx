@@ -3,19 +3,17 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { signOut } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/useAppStore';
 
 export default function SettingsScreen() {
   const { user } = useAppStore();
   const router = useRouter();
-  const [loading, setLoading] = React.useState(false);
-
-  async function handleSignOut() {
-    setLoading(true);
-    await signOut();
-    setLoading(false);
-  }
+  const handleSignOut = async () => {
+    alert('Signing out...');
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="px-6 py-12">
@@ -94,7 +92,6 @@ export default function SettingsScreen() {
         title="Sign Out"
         variant="outline"
         onPress={handleSignOut}
-        loading={loading}
       />
     </ScrollView>
   );

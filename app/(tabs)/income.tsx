@@ -27,6 +27,7 @@ const PLATFORMS = [
 ];
 
 const CATEGORIES = [
+  'Total', 'General',
   'Ad Revenue', 'Sponsorship', 'Merch', 'Affiliate',
   'Tips', 'Subscription', 'Other',
 ];
@@ -169,7 +170,7 @@ export default function IncomeScreen() {
   const [editingRecord, setEditingRecord] = useState<IncomeRecord | null>(null);
   const [amount, setAmount] = useState('');
   const [platform, setPlatform] = useState('YouTube');
-  const [category, setCategory] = useState('Ad Revenue');
+  const [category, setCategory] = useState('Total');
   const [date, setDate] = useState(todayISO());
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -177,6 +178,7 @@ export default function IncomeScreen() {
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
+    console.log('[Income] mounted');
     fetchIncome();
   }, []);
 
@@ -184,7 +186,7 @@ export default function IncomeScreen() {
     setEditingRecord(null);
     setAmount('');
     setPlatform('YouTube');
-    setCategory('Ad Revenue');
+    setCategory('Total');
     setDate(todayISO());
     setDescription('');
     setFormError('');
